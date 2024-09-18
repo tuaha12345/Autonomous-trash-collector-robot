@@ -1,0 +1,64 @@
+///############################### Code for arduino#################################
+int led=12;
+int led2=13;
+int count=0;
+void setup(){
+  pinMode(12,OUTPUT);
+  pinMode(13,OUTPUT);
+  Serial.begin(9600);
+  while(!Serial);
+  Serial.println("Programm start");
+}
+void parse_floats( String str, float* f1, float* f2) {
+    int i = 0;
+    float num = 0.00000000000, decimal = 0.0, sign = 1.00000000000;
+    while (str[i] != '\0') {
+        if (str[i] == '-') {
+            sign = -1.00000000000;
+        }
+        else if (str[i] == '.') {
+            decimal = 1.00000000000;
+        }
+        else if (str[i] >= '0' && str[i] <= '9') {
+            if (decimal) {
+                num = num + (str[i] - '0') / (10.000000000000 * decimal);
+                decimal *= 10.000000000000;
+            }
+            else {
+                num = num * 10.000000000000 + (str[i] - '0');
+            }
+        }
+        else if (str[i] == ',') {
+            *f1 = num * sign;
+            sign = 1.000000000000;
+            num = 0.000000000000;
+            decimal = 0.000000000000;
+        }
+        i++;
+    }
+    *f2 = num * sign;
+}
+void loop()
+{
+if(Serial.available()){
+  Serial.println("Serial is avilable");
+ String one=Serial.readString();
+ Serial.println(one);
+
+   String input = one;
+    float f1, f2;
+    parse_floats(input, &f1, &f2);
+ 
+    
+  Serial.print("Receiving latitude:=");
+  Serial.print(f1,6);
+  Serial.print("Receiving longitude:=");
+  Serial.println(f2,6);
+
+
+ Serial.print("Count:");
+ Serial.println(count);
+ count+=1;
+ 
+}
+}

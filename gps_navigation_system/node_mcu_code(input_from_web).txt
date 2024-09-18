@@ -1,0 +1,95 @@
+//
+//#include <string>
+#include <Arduino.h>
+#ifdef ESP32
+  #include <WiFi.h>
+  #include <AsyncTCP.h>
+#else
+  #include <ESP8266WiFi.h>
+  #include <ESPAsyncTCP.h>
+#endif
+#include <ESPAsyncWebServer.h>
+ #include<SoftwareSerial.h> /// arduino serial communication 
+SoftwareSerial abc(13,15); /// arduino serial communication 
+
+AsyncWebServer server(80);
+
+const char* ssid = "Virus 2.4";
+const char* password = "a1b2c3d4";
+
+
+const char* input_parameter1 = "input_string";
+
+
+String input_message;
+
+
+const char index_html[] PROGMEM = R"rawliteral(
+<!DOCTYPE HTML><html><head>
+  <title>Waypoints Input Form</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    html {font-family: Times New Roman; display: inline-block; text-align: center;}
+    h2 { font-size: 2.2rem; color: #9C1930;}
+    h1 { font-size: 1.70rem;color: #E66149;}
+    body { background-image: url('https://c8.alamy.com/comp/R1PYC1/robot-vector-icon-isolated-on-transparent-background-robot-transparency-logo-concept-R1PYC1.jpg');  background-repeat: no-repeat;
+}
+  </style>
+  </head><body>
+  <h2>Welcome to Our Autonomous Trash Collection Robot Waypoint input Form </h2> </br>
+  <h1>Please input the latitude and longitude of selected area: </h1> 
+  <form action="/get">
+    Enter waypaoint: <input type="text" name="input_string">
+    <input type="submit" value="Submit">
+  </form><br>
+  
+</body></html>)rawliteral";
+
+void notFound(AsyncWebServerRequest *request) {
+  request->send(404, "text/plain", "Not found");
+}
+
+
+
+void setup() {
+  abc.begin(9600); /// arduino serial communication 
+  Serial.begin(115200);
+  WiFi.mode(WIFI_STA);
+  WiFi.begin(ssid, password);
+  if (WiFi.waitForConnectResult() != WL_CONNECTED) {
+    Serial.println("Connecting...");
+    return;
+  }
+  Serial.println();
+  Serial.print("IP Address: ");
+  Serial.println(WiFi.localIP());
+
+  server.on("/", HTTP_GET, [](AsyncWebServerRequest *request){
+    request->send_P(200, "text/html", index_html);
+  });
+
+  server.on("/get", HTTP_GET, [] (AsyncWebServerRequest *request) {
+//    String input_message;
+    String input_parameter;
+
+    if (request->hasParam(input_parameter1)) {
+      input_message = request->getParam(input_parameter1)->value();
+      input_parameter = input_parameter1;
+      abc.write(input_message.c_str());
+
+    }
+  
+    else {
+      input_message = "No message sent";
+      input_parameter = "none";
+    }
+    Serial.println(input_message);
+    request->send(200, "text/html", "Your inserted waypoint are: ("+ input_parameter + ") with value: " + input_message + "<br><a href=\"/\"><h3>Are you sure to insert another waypoint?</h3></a>");
+  });
+  server.onNotFound(notFound);
+  server.begin();
+}
+
+void loop() {
+
+}

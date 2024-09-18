@@ -1,0 +1,7 @@
+1. Python version: Python 3.9.13
+2. Install Keras and OpenCV:
+   https://pysource.com/2022/07/05/install-keras-and-opencv-computer-vision-with-keras/
+3. pip install opencv-python
+4. pip install pandas
+5. pip install ultralytics
+

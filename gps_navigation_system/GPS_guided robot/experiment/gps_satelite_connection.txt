@@ -1,0 +1,243 @@
+#include <Wire.h>
+#include <Adafruit_Sensor.h>
+#include <Adafruit_HMC5883_U.h>
+#include <TinyGPS++.h>
+#include <SoftwareSerial.h>
+static const int RXPin = 3, TXPin = 4;
+static const uint32_t GPSBaud = 9600;
+// The TinyGPS++ object
+TinyGPSPlus gps;
+// The serial connection to the GPS device
+SoftwareSerial ss(RXPin, TXPin);
+Adafruit_HMC5883_Unified mag = Adafruit_HMC5883_Unified(12345);/////////// mag
+
+int count=0;
+int gps_led=12;
+float FF1,FF2;
+String one;
+double gpsheading;
+double La1;
+double Long1;
+double showLa1;
+double showLong1;
+
+
+//23.64271991798503, 90.47421148413521
+
+//23.642749078512868, 90.47395594745696
+double La2;
+double Long2;
+
+int enA = 8;
+int m1 = 9;
+// Motor B connections
+int enB = 11;
+int m2= 10;
+float pos1;
+float pos2;
+
+
+
+
+void setup(void) 
+{
+  ss.begin(GPSBaud);
+  Serial.begin(9600);
+  /////////
+  pinMode(gps_led,OUTPUT);
+   pinMode(enA, OUTPUT);
+  pinMode(enB, OUTPUT);
+
+  pinMode(m1, OUTPUT);
+  pinMode(m2, OUTPUT);
+  /////////////
+    while(!Serial);
+  Serial.println("Programm start");
+
+///////////////////// mag//////////////
+   if(!mag.begin())
+  {
+    /* There was a problem detecting the HMC5883 ... check your connections */
+    Serial.println("Ooops, no HMC5883 detected ... Check your wiring!");
+    while(1);
+  }
+  
+
+
+}
+
+void parse_floats( String str, float* f1, float* f2) {
+    int i = 0;
+    float num = 0.00000000000, decimal = 0.0, sign = 1.00000000000;
+    while (str[i] != '\0') {
+        if (str[i] == '-') {
+            sign = -1.00000000000;
+        }
+        else if (str[i] == '.') {
+            decimal = 1.00000000000;
+        }
+        else if (str[i] >= '0' && str[i] <= '9') {
+            if (decimal) {
+                num = num + (str[i] - '0') / (10.000000000000 * decimal);
+                decimal *= 10.000000000000;
+            }
+            else {
+                num = num * 10.000000000000 + (str[i] - '0');
+            }
+        }
+        else if (str[i] == ',') {
+            *f1 = num * sign;
+            sign = 1.000000000000;
+            num = 0.000000000000;
+            decimal = 0.000000000000;
+        }
+        i++;
+    }
+    *f2 = num * sign;
+}
+void loop(void) 
+{
+   sensors_event_t event; //// mag
+  mag.getEvent(&event);///// mag
+  float heading = atan2(event.magnetic.y, event.magnetic.x);
+
+  float declinationAngle = 0.22;
+  heading += declinationAngle;
+  
+  // Correct for when signs are reversed.
+  if(heading < 0)
+    heading += 2*PI;
+    
+  // Check for wrap due to addition of declination.
+  if(heading > 2*PI)
+    heading -= 2*PI;
+   
+  // Convert radians to degrees for readability.
+  float headingDegrees = heading * 180/M_PI; 
+
+
+
+  
+ 
+   while (ss.available() > 0){
+    gps.encode(ss.read());
+    if (gps.location.isUpdated()){
+      digitalWrite(gps_led,HIGH);
+      showLa1=(gps.location.lat());
+      showLong1=(gps.location.lng());
+      La1= showLa1;
+      Long1=showLong1;
+      La2=FF1;
+      Long2=FF2;
+      
+      
+      gpsheading = atan2(sin(Long2-Long1)*cos(La2) , cos(La1)*sin(La2)- sin(La1)*cos(La2)*cos(Long2-Long1));
+      gpsheading = gpsheading*180/3.1415926536;
+      if (gpsheading<0)
+      {
+       gpsheading = ((gpsheading+360)); // If heading is negative make it positive
+      }
+//            Serial.print("GPS     Heading:= ");
+//      Serial.println(gpsheading);
+//      Serial.print("Compass Heading: "); Serial.println(headingDegrees);
+//      Serial.print("Latitude= "); 
+      Serial.print(showLa1,5);
+      Serial.print(" Longitude= "); 
+      Serial.println(showLong1,5);
+//      Serial.print("C=");
+//      Serial.println(count);
+      
+////////////////////////
+//      Serial.print("Now Latitude= "); 
+//      Serial.print(FF1,5);
+//      Serial.print("Now Longitude= "); 
+//      Serial.println(FF2,5);
+
+///************************** motor************************
+pos2=gpsheading;
+if(gpsheading<=340)
+{
+  pos1=gpsheading+20;
+}
+else{
+   pos1=20;
+}
+
+if( headingDegrees > pos1 && headingDegrees < 360.00 )
+ {
+
+//     digitalWrite(m2, LOW);
+//  digitalWrite(enA,LOW);
+//
+//     digitalWrite(m1, HIGH);
+//   digitalWrite(enB,HIGH);
+//   delay(50);
+//     digitalWrite(m1, LOW);
+//  digitalWrite(enB,LOW);
+//  delay(50);
+ }
+ 
+
+
+
+ else if( headingDegrees < pos2  && headingDegrees > 5.00)
+ {
+//   digitalWrite(m1, LOW);
+//  digitalWrite(enB,LOW);
+//
+//    digitalWrite(m2, HIGH);
+//  digitalWrite(enA,HIGH);
+//  delay(50);
+//    digitalWrite(m2, LOW);
+//  digitalWrite(enA,LOW);
+//  delay(50);
+  
+
+
+ }
+
+ else{
+//     digitalWrite(m1, LOW);
+//   digitalWrite(m2, LOW);
+//   digitalWrite(enA,LOW);
+//   digitalWrite(enB,LOW);
+ }
+ ////////////*************************** end motor ******************************
+   
+    }
+
+
+    ///@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@ SERIAL @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+if(Serial.available()){
+  Serial.println("Serial is avilable");
+ String one=Serial.readString();
+ Serial.println(one);
+
+   String input = one;
+    float f1, f2;
+    parse_floats(input, &f1, &f2);
+    FF1=f1;
+    FF2=f2;
+    
+  Serial.print("Receiving latitude:=");
+  Serial.print(f1,6);
+  Serial.print("Receiving longitude:=");
+  Serial.println(f2,6);
+
+
+ Serial.print("Count:");
+ Serial.println(count);
+ count+=1;
+  
+ }
+
+ ///////////////////////////////////////////////////////////////////////// SERIAL///////////////////////
+  }
+
+
+digitalWrite(gps_led,LOW);
+
+
+
+
+}

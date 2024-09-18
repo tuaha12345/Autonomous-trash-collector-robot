@@ -1,0 +1,68 @@
+import cv2
+import pandas as pd
+import numpy as np
+from ultralytics import YOLO
+
+# Load the YOLOv8 model
+model = YOLO('yolov8s.pt')
+
+# Mouse callback function to get RGB values at mouse position
+def RGB(event, x, y, flags, param):
+    if event == cv2.EVENT_MOUSEMOVE:  
+        colorsBGR = [x, y]
+        print(colorsBGR)
+
+cv2.namedWindow('RGB')
+cv2.setMouseCallback('RGB', RGB)
+
+# Capture from the webcam
+cap = cv2.VideoCapture(0)
+
+# Load class names from coco.txt file
+with open("coco.txt", "r") as my_file:
+    class_list = my_file.read().split("\n")
+    
+print(class_list)
+count = 0
+
+while True:
+    ret, frame = cap.read()
+    if not ret:
+        break
+    
+    count += 1
+    # Only process every third frame to save processing time
+    if count % 3 != 0:
+        continue
+    
+    frame = cv2.resize(frame, (1020, 500))
+    
+    # Run YOLOv8 inference on the frame
+    results = model(frame)
+
+    # Extract the bounding boxes, confidence scores, and class IDs
+    boxes = results[0].boxes
+
+    for box in boxes:
+        # Extract coordinates (x1, y1, x2, y2), confidence score, and class ID
+        x1, y1, x2, y2 = map(int, box.xyxy[0])  # Bounding box coordinates
+        conf = box.conf[0]                     # Confidence score
+        cls = int(box.cls[0])                  # Class index
+
+        # Get class name using class ID
+        class_name = class_list[cls]
+        
+        # Draw rectangle and put class label on the frame
+        cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 0, 255), 2)
+        cv2.putText(frame, f"{class_name} {conf:.2f}", (x1, y1-10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 0, 0), 1)
+
+    # Show the frame with the bounding boxes and labels
+    cv2.imshow("RGB", frame)
+    
+    # Exit when ESC key is pressed
+    if cv2.waitKey(1) & 0xFF == 27:
+        break
+
+# Release resources
+cap.release()
+cv2.destroyAllWindows()

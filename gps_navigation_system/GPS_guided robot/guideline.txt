@@ -1,0 +1,9 @@
+1. Upload the code before connecting all the components with Arduino and Nodemcu.
+
+2. If nodemcu is connected with Arduino then code will be not uploaded, so you need to disconnect the Arduino and nodemcu connection.
+
+3. You need to calibrate your compass to get the proper offset value. You can find the calibration code also with the Arduino-HMC5883L library.
+
+4. Then insert the offset value inside your main code....
+
+

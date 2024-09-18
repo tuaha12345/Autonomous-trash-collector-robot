@@ -1,0 +1,229 @@
+#include <Wire.h>
+#include <HMC5883L.h>
+#include <Servo.h>
+byte servostart = 95;
+Servo head_servo,door_servo;
+int distanceleft = 0;
+int distanceright = 0;
+long t, cm;
+#define Trig 8
+#define Echo 9
+int led_r=12;/// blue
+int led_l=5;
+HMC5883L compass;
+
+int  Pin_right_forward  =7 ;//lpwm
+int  Pin_left_forward  =6 ;//lpwm
+
+//int Pin_E_L  =12; //pwm enable
+//int pwm=150;
+void setup()
+{
+  Serial.begin(9600);
+  head_servo.attach(10);
+  door_servo.attach(11);
+  pinMode(led_r, OUTPUT);
+  pinMode(led_l, OUTPUT);
+  pinMode(Trig, OUTPUT);
+  pinMode(Echo, INPUT);
+
+  pinMode(Pin_right_forward, OUTPUT);
+  pinMode(Pin_left_forward, OUTPUT);
+  
+
+  /////////////////////////////////// compass sensor -------------------
+    
+  // Initialize Initialize HMC5883L
+  Serial.println("Initialize HMC5883L");
+  while (!compass.begin())
+  {
+    Serial.println("Could not find a valid HMC5883L sensor, check wiring!");
+    delay(500);
+  }
+
+  // Set measurement range
+  compass.setRange(HMC5883L_RANGE_1_3GA);
+  // Set measurement mode
+  compass.setMeasurementMode(HMC5883L_CONTINOUS);
+  // Set data rate
+  compass.setDataRate(HMC5883L_DATARATE_30HZ);
+  // Set number of samples averaged
+  compass.setSamples(HMC5883L_SAMPLES_8);
+  // Set calibration offset. See HMC5883L_calibration.ino
+  compass.setOffset(124, -109, -124);
+  //------------------------------------------- end of compass-----------------
+ 
+}
+
+void loop()
+{
+
+    getdistance();
+    Serial.print("Distance:");
+  Serial.println(cm);
+  int leftdistance = 0;
+  int rightdistance = 0;
+
+  ///--------------------------------------- compass sensor---------
+  Vector norm = compass.readNormalize();
+
+  // Calculate heading
+  float heading = atan2(norm.YAxis, norm.XAxis);
+
+  // Set declination angle on your location and fix heading
+  // You can find your declination on: http://magnetic-declination.com/
+  // (+) Positive or (-) for negative
+  // For Bytom / Poland declination angle is 4'26E (positive)
+  // Formula: (deg + (min / 60.0)) / (180 / M_PI);
+  float declinationAngle = (4.0 + (26.0 / 60.0)) / (180 / M_PI);
+  heading += declinationAngle;
+
+  // Correct for heading < 0deg and heading > 360deg
+  if (heading < 0)
+  {
+    heading += 2 * PI;
+  }
+
+  if (heading > 2 * PI)
+  {
+    heading -= 2 * PI;
+  }
+
+  // Convert to degrees
+  float headingDegrees = heading * 180/M_PI; 
+
+  // Output
+  Serial.print(" Heading = ");
+  Serial.print(heading);
+  Serial.print(" Degress = ");
+  Serial.print(headingDegrees);
+  Serial.println();
+////------------------------ end of compass 
+   
+  // digitalWrite(Pin_right_forward, HIGH);
+  // digitalWrite(Pin_right_backward, LOW);
+  
+  //   digitalWrite(Pin_left_forward, HIGH);
+  // digitalWrite(Pin_left_backward, LOW);
+  // delay(10);
+  // motor_stop();
+  // delay(200);
+
+if(cm <= 70)
+{
+      digitalWrite(Pin_right_forward, LOW);
+      digitalWrite(Pin_left_forward, LOW);
+    delay(200);
+    leftdistance = leftsee();
+    rightdistance = rightsee();
+    if (leftdistance >= rightdistance) {
+      turn_left();
+      delay(5000);
+       move_forward();
+      delay(7000);
+      motor_stop();
+
+    } else {
+        turn_right();
+        delay(5000);
+        move_forward();
+        delay(7000);
+        motor_stop();
+
+    }
+
+}
+
+else{
+    digitalWrite(led_l,LOW);
+      digitalWrite(led_r,LOW);
+                ////////////// -------------conditional movement -----------------
+                if(headingDegrees>290)
+                {
+                  digitalWrite(Pin_right_forward, HIGH);
+                  digitalWrite(Pin_left_forward, LOW);
+
+                }
+                else if(headingDegrees<280)
+                {
+                      digitalWrite(Pin_left_forward, HIGH);
+                  digitalWrite(Pin_right_forward, LOW);
+
+                }
+                 else if(headingDegrees>280 && headingDegrees<290)
+                {
+                      digitalWrite(Pin_left_forward, HIGH);
+                  digitalWrite(Pin_right_forward, LOW);
+
+                }
+                
+                else{
+                  motor_stop();
+                }
+
+              ////------------------  end of conditional moveent---------------
+
+
+}
+
+
+
+}/////////////// end of loop
+
+void motor_stop()
+{
+    digitalWrite(Pin_right_forward, LOW);
+
+    digitalWrite(Pin_left_forward, LOW);
+  
+}
+
+void turn_right()
+{     
+   digitalWrite(led_r,HIGH);
+      digitalWrite(led_l,LOW);
+      digitalWrite(Pin_right_forward, LOW);
+      digitalWrite(Pin_left_forward, HIGH);
+      
+}
+void turn_left()
+{
+             digitalWrite(led_l,HIGH);
+      digitalWrite(led_r,LOW);
+        digitalWrite(Pin_right_forward, HIGH);
+      digitalWrite(Pin_left_forward, LOW);
+     
+}
+void move_forward()
+{
+        digitalWrite(Pin_right_forward, HIGH);
+      digitalWrite(Pin_left_forward, HIGH);
+}
+int getdistance() {
+  digitalWrite(Trig, LOW);
+  delayMicroseconds(4);
+  digitalWrite(Trig, HIGH);
+  delayMicroseconds(10);
+  digitalWrite(Trig, LOW);
+  t = pulseIn(Echo, HIGH);
+  cm = t / 29 / 2;
+  return cm;
+}
+int leftsee() {
+  head_servo.write(servostart);
+  delay(1000);
+  head_servo.write(180);
+  delay(2000);
+  distanceleft = getdistance();
+  head_servo.write(servostart);
+  return distanceleft;
+}
+int rightsee() {
+  head_servo.write(servostart);
+  delay(1000);
+  head_servo.write(5);
+  delay(2000);
+  distanceright = getdistance();
+  head_servo.write(servostart);
+  return distanceright;
+}

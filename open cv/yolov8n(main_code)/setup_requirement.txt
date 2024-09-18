@@ -1,0 +1,5 @@
+1.pip install opencv-python
+2.pip install mediapipe
+3.pip install pyfirmata
+4.Arduino code upload:
+  File->Examples->Firmata->StandardFirmata

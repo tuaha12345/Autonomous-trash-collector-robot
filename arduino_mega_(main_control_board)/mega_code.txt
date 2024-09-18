@@ -1,0 +1,214 @@
+
+
+int motor_input_right = 31; 
+int motor_input_left = 33; 
+int catch_input = 35; 
+int do_not_catch_input = 37; 
+int led = A0; 
+
+int mR=15;
+int mL=16;
+int arm1_up=19;
+int arm1_down=18;
+int hand1_emissions=21;
+int hand1_penetration=20;
+int gripper_close=22;
+int gripper_open=24;
+int door1_close=26;
+int door1_open=28;
+
+int count=0;
+int arm_count=0;
+int navigation_control_count=0;
+
+
+const int pwm=155;
+void setup()   
+{  
+  Serial.begin(9600); 
+  pinMode(motor_input_right,INPUT);
+  pinMode(motor_input_left,INPUT);
+  pinMode(catch_input,INPUT);
+  pinMode(do_not_catch_input,INPUT);
+  pinMode(mR,OUTPUT);
+  pinMode(mL,OUTPUT);
+  pinMode(arm1_up,OUTPUT);
+  pinMode(arm1_down,OUTPUT);
+  pinMode(hand1_emissions,OUTPUT);
+  pinMode(hand1_penetration,OUTPUT);
+  pinMode(gripper_open,OUTPUT);
+  pinMode(gripper_close,OUTPUT);
+  pinMode(door1_open,OUTPUT);
+  pinMode(door1_close,OUTPUT); 
+  pinMode(led,OUTPUT);
+
+    pinMode(9, INPUT);
+  pinMode(8, INPUT);
+  
+}  
+
+int left_motor_read,right_motor_read,Catch_input,Do_not_catch_input;
+void loop()   
+{  
+  
+  right_motor_read=digitalRead(motor_input_right); 
+  left_motor_read=digitalRead(motor_input_left);   
+  Do_not_catch_input=digitalRead(do_not_catch_input);
+  Catch_input=digitalRead(catch_input);
+    int k=digitalRead(9);
+  int m=digitalRead(8);
+
+    Serial.print("Count=");
+    Serial.println(count);
+
+
+if(right_motor_read==LOW && left_motor_read==LOW && Catch_input==LOW)
+{
+  Serial.println("motor_Low");
+   digitalWrite(led,LOW);
+   navigation_control_count+=1;
+   if(navigation_control_count>250)
+   {
+    count=-300;
+             if(k==LOW && m==HIGH)
+        {
+          digitalWrite(mL,LOW);
+          digitalWrite(mR,HIGH);
+          Serial.println("LOW");
+        }
+        else if(m==LOW && k==HIGH)
+        {
+              digitalWrite(mR,LOW);
+          digitalWrite(mL,HIGH);
+          Serial.println("LOW");
+        }
+        
+        else if(m==HIGH && k==HIGH)
+        {
+          digitalWrite(mR,HIGH);
+          digitalWrite(mL,HIGH);
+          Serial.println("LOW");
+        }
+        else
+        {
+           
+           digitalWrite(mL,LOW);
+            digitalWrite(mR,LOW);
+           Serial.println("HIGH");
+        }
+    
+   }/// condition 
+
+         else
+        {
+           
+           digitalWrite(mL,LOW);
+            digitalWrite(mR,LOW);
+           Serial.println("HIGH");
+        }
+}/////////////// end of gps move
+
+
+else
+{  
+  navigation_control_count=0;
+   hand1();
+   motor_move();
+   digitalWrite(led,HIGH);
+
+   
+              if( count>50)
+           {
+
+            digitalWrite(arm1_up,LOW);////////////////////// arm down
+            digitalWrite(arm1_down,HIGH);
+            delay(5000);
+            
+            digitalWrite(hand1_emissions,HIGH);///////////// hand emissions
+            digitalWrite(hand1_penetration,LOW);
+            delay(15000);
+
+            digitalWrite(gripper_close,HIGH);/////////////// gripper close
+            digitalWrite(gripper_open,LOW);
+            delay(7000);
+
+            digitalWrite(hand1_emissions,LOW);////////////// hand penetration
+            digitalWrite(hand1_penetration,HIGH);
+            delay(15000);
+            
+            digitalWrite(arm1_up,HIGH);///////////////////// arm up
+            digitalWrite(arm1_down,LOW);
+            delay(4000);
+
+            digitalWrite(door1_open,HIGH);////////////////// door1 open
+            digitalWrite(door1_close,LOW);
+            delay(7000);
+ 
+            digitalWrite(gripper_open,HIGH);/////////////// gripper release
+            digitalWrite(gripper_close,LOW);
+            delay(11000);
+
+            digitalWrite(door1_open,LOW);/////////////////// door close
+            digitalWrite(door1_close,HIGH);
+            delay(7000);
+   
+            count=-300;
+           }
+}
+
+    
+
+
+    
+}  //// end of loop
+
+void hand1()
+{
+    Catch_input=digitalRead(catch_input);
+      if(Catch_input==HIGH)
+  {
+    count+=1;
+  }
+
+
+
+
+}/////// end of hand1
+
+void motor_move()
+{
+  
+    if(right_motor_read==HIGH && left_motor_read==LOW && Catch_input==LOW)
+  {
+//     count=-500;
+      digitalWrite(mR,HIGH);
+      digitalWrite(mL,LOW);    
+      delay(250);
+  }
+
+
+ if(left_motor_read==HIGH && right_motor_read==LOW && Catch_input==LOW)
+  {
+    
+// count=-500;
+      digitalWrite(mL,HIGH);
+      digitalWrite(mR,LOW);   
+      delay(250); 
+  }
+
+
+  else if(left_motor_read==HIGH && right_motor_read==HIGH && Catch_input==LOW)
+  {
+//       count=-500;
+       digitalWrite(mL,HIGH);
+      digitalWrite(mR,HIGH);   
+      delay(250);
+  }
+
+else{
+     digitalWrite(mL,LOW);
+      digitalWrite(mR,LOW);
+      digitalWrite(led,LOW);
+}
+
+}////// end of motor move

@@ -1,0 +1,195 @@
+#include <Wire.h>
+#include <HMC5883L.h>
+HMC5883L compass;
+///############################### Code for arduino#################################
+int  Pin_right_forward  =8 ;//lpwm
+int Pin_right_backward  =9 ;//rpwm
+int  Pin_left_forward  =10 ;//lpwm
+int Pin_left_backward  =11 ;//rpwm
+ float f1, f2,gpsheading,La1,La2,Long1,Long2;
+ int count=0;
+void setup(){
+  Serial.begin(9600);
+  while(!Serial);
+  Serial.println("Programm start");
+    pinMode(Pin_right_forward, OUTPUT);
+  pinMode(Pin_right_backward , OUTPUT);
+    pinMode(Pin_left_forward, OUTPUT);
+  pinMode(Pin_left_backward , OUTPUT);
+   /////////////////////////////////// compass sensor -------------------
+    
+  // Initialize Initialize HMC5883L
+  Serial.println("Initialize HMC5883L");
+  while (!compass.begin())
+  {
+    Serial.println("Could not find a valid HMC5883L sensor, check wiring!");
+    delay(500);
+  }
+
+  // Set measurement range
+  compass.setRange(HMC5883L_RANGE_1_3GA);
+  // Set measurement mode
+  compass.setMeasurementMode(HMC5883L_CONTINOUS);
+  // Set data rate
+  compass.setDataRate(HMC5883L_DATARATE_30HZ);
+  // Set number of samples averaged
+  compass.setSamples(HMC5883L_SAMPLES_8);
+  // Set calibration offset. See HMC5883L_calibration.ino
+  compass.setOffset(-30, -309, -297);
+  //------------------------------------------- end of compass-----------------
+}
+void parse_floats( String str, float* f1, float* f2) {
+    int i = 0;
+    float num = 0.00000000000, decimal = 0.0, sign = 1.00000000000;
+    while (str[i] != '\0') {
+        if (str[i] == '-') {
+            sign = -1.00000000000;
+        }
+        else if (str[i] == '.') {
+            decimal = 1.00000000000;
+        }
+        else if (str[i] >= '0' && str[i] <= '9') {
+            if (decimal) {
+                num = num + (str[i] - '0') / (10.000000000000 * decimal);
+                decimal *= 10.000000000000;
+            }
+            else {
+                num = num * 10.000000000000 + (str[i] - '0');
+            }
+        }
+        else if (str[i] == ',') {
+            *f1 = num * sign;
+            sign = 1.000000000000;
+            num = 0.000000000000;
+            decimal = 0.000000000000;
+        }
+        i++;
+    }
+    *f2 = num * sign;
+}
+void loop()
+{
+   ///@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@ SERIAL @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+if(Serial.available()){
+  Serial.println("Serial is avilable");
+ String one=Serial.readString();
+ Serial.println(one);
+
+   String input = one;
+    parse_floats(input, &f1, &f2);
+    // FF1=f1;
+    // FF2=f2;
+    
+  // Serial.print("Receiving latitude:=");
+  // Serial.print(f1,6);
+  // Serial.print("Receiving longitude:=");
+  // Serial.println(f2,6);
+
+
+ Serial.print("Count:");
+ Serial.println(count);
+ count+=1;
+  
+ }
+///----------------------------  end of seral communcation-----
+
+
+
+
+  ///--------------------------------------- compass sensor---------
+  Vector norm = compass.readNormalize();
+
+  // Calculate heading
+  float heading = atan2(norm.YAxis, norm.XAxis);
+
+  // Set declination angle on your location and fix heading
+  // You can find your declination on: http://magnetic-declination.com/
+  // (+) Positive or (-) for negative
+  // For Bytom / Poland declination angle is 4'26E (positive)
+  // Formula: (deg + (min / 60.0)) / (180 / M_PI);
+  float declinationAngle = (4.0 + (26.0 / 60.0)) / (180 / M_PI);
+  heading += declinationAngle;
+
+  // Correct for heading < 0deg and heading > 360deg
+  if (heading < 0)
+  {
+    heading += 2 * PI;
+  }
+
+  if (heading > 2 * PI)
+  {
+    heading -= 2 * PI;
+  }
+
+  // Convert to degrees
+  float headingDegrees = heading * 180/M_PI; 
+
+      La1= 23.64275201889645;
+      Long1=90.47373715144009;
+      La2=f1;
+      Long2=f2;
+
+      gpsheading = atan2(sin(Long2-Long1)*cos(La2) , cos(La1)*sin(La2)- sin(La1)*cos(La2)*cos(Long2-Long1));
+      gpsheading = gpsheading*180/3.1415926536;
+      if (gpsheading<0)
+      {
+       gpsheading = ((gpsheading+360)); // If heading is negative make it positive
+      }
+
+  // Output
+  Serial.print(" Serial communcationa = ");
+  Serial.print(f1);
+  Serial.print(" Heading = ");
+  Serial.print(heading);
+  Serial.print(" Degress = ");
+  Serial.print(headingDegrees);
+  Serial.println();
+////------------------------ end of compass 
+   
+  // digitalWrite(Pin_right_forward, HIGH);
+  // digitalWrite(Pin_right_backward, LOW);
+  
+  //   digitalWrite(Pin_left_forward, HIGH);
+  // digitalWrite(Pin_left_backward, LOW);
+  // delay(10);
+  // motor_stop();
+  // delay(200);
+
+  ////////////// -------------conditional movement -----------------
+  float different=headingDegrees-gpsheading;
+if(different<0)
+{
+  different = abs(different);
+}
+else{
+  different = different;
+}
+  if(headingDegrees > gpsheading && different>5.0 )
+  {
+    digitalWrite(Pin_right_forward, HIGH);
+    digitalWrite(Pin_right_backward, LOW);
+    delay(10);
+    motor_stop();
+    delay(100);
+  }
+  else if(headingDegrees < gpsheading  && different>5.0)
+  {
+        digitalWrite(Pin_left_forward, HIGH);
+  digitalWrite(Pin_left_backward, LOW);
+      delay(10);
+    motor_stop();
+    delay(100);
+  }
+  else{
+    motor_stop();
+  }
+
+////------------------  end of conditional moveent---------------
+}//////////////// end of loop
+void motor_stop()
+{
+    digitalWrite(Pin_right_forward, LOW);
+  digitalWrite(Pin_right_backward, LOW);
+      digitalWrite(Pin_left_forward, LOW);
+  digitalWrite(Pin_left_backward, LOW);
+}
